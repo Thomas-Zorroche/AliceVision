@@ -451,6 +451,10 @@ alicevision_add_software(aliceVision_densePointCloudFiltering
     aliceVision_numeric
     aliceVision_sfmData
     aliceVision_sfmDataIO
+    aliceVision_mvsUtils
+    OpenMesh
+    Boost::program_options
+    Boost::filesystem
 )
 
 endif() 
