@@ -444,4 +444,13 @@ alicevision_add_software(aliceVision_LdrToHdrMerge
         Boost::filesystem
 )
 
+alicevision_add_software(aliceVision_densePointCloudFiltering
+  SOURCE main_densePointCloudFiltering.cpp
+  FOLDER ${FOLDER_SOFTWARE_PIPELINE}
+  LINKS aliceVision_system
+    aliceVision_numeric
+    aliceVision_sfmData
+    aliceVision_sfmDataIO
+)
+
 endif() 
