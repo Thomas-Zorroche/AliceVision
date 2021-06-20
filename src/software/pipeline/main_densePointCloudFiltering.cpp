@@ -7,12 +7,6 @@
 #include <aliceVision/sfmData/SfMData.hpp>
 #include <aliceVision/sfmDataIO/sfmDataIO.hpp>
 
-#include <OpenMesh/Core/IO/reader/OBJReader.hh>
-#include <OpenMesh/Core/IO/writer/OBJWriter.hh>
-#include <OpenMesh/Core/IO/MeshIO.hh>
-#include <OpenMesh/Core/Mesh/TriMesh_ArrayKernelT.hh>
-
-
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
 
@@ -97,18 +91,26 @@ int aliceVision_main(int argc, char** argv)
     /////////////////////////////////////////////////////////////////
     // Dense Point Cloud Filtering
 
-    ALICEVISION_COUT("DENSE POINT CLOUD FILTERING BEGIN...");
-
-    // Mesh type
-    typedef OpenMesh::TriMesh_ArrayKernelT<> Mesh;
+    ALICEVISION_COUT("DENSE POINT CLOUD FILTERING NODE BEGIN...");
 
     // Retrieve Mesh
-    Mesh mesh;
-    if(!OpenMesh::IO::read_mesh(mesh, inputMeshPath.c_str()))
+    mesh::Texturing texturing;
+    texturing.loadOBJWithAtlas(inputMeshPath);
+    mesh::Mesh* mesh = texturing.mesh;
+    if(!mesh)
     {
         ALICEVISION_LOG_ERROR("Unable to read input mesh from the file: " << inputMeshPath);
         return EXIT_FAILURE;
     }
+    if(mesh->pts.empty() || mesh->tris.empty())
+    {
+        ALICEVISION_LOG_ERROR("Error: empty mesh from the file " << inputMeshPath);
+        ALICEVISION_LOG_ERROR("Input mesh: " << mesh->pts.size() << " vertices and " << mesh->tris.size()
+                                             << " facets.");
+        return EXIT_FAILURE;
+    }
+    ALICEVISION_LOG_INFO("Mesh file: \"" << inputMeshPath << "\" loaded.");
+    ALICEVISION_LOG_INFO("Input mesh: " << mesh->pts.size() << " vertices and " << mesh->tris.size() << " facets.");
 
     // Retrieve Dense Sfm Data Raw
     sfmData::SfMData densePointCloud;
@@ -117,6 +119,8 @@ int aliceVision_main(int argc, char** argv)
         ALICEVISION_LOG_ERROR("The input SfMData file '" << densePointCloudPath << "' cannot be read.");
         return EXIT_FAILURE;
     }
+
+    fuseCut::filterDensePointCloud(densePointCloud.getLandmarks(), mesh->pts);
 
     ALICEVISION_COUT("EXIT SUCCESS");
 

@@ -145,6 +145,30 @@ public:
 };
 #endif
 
+/// Filter With Raw Dense Point Cloud
+void filterDensePointCloud(const StaticVector<Point3d>& verticesDensePointCloud, StaticVector<Point3d>& verticesMesh)
+{
+    ALICEVISION_LOG_INFO("Filter Dense Point Cloud Function Begin");
+
+    ALICEVISION_LOG_INFO("Build nanoflann KdTree index.");
+    PointVectorAdaptator pointCloudRef(verticesDensePointCloud);
+    KdTree kdTree(3 /*dim*/, pointCloudRef, nanoflann::KDTreeSingleIndexAdaptorParams(MAX_LEAF_ELEMENTS));
+    kdTree.buildIndex();
+
+    #pragma omp parallel for
+    for(int vIndex = 0; vIndex < verticesDensePointCloud.size(); ++vIndex)
+    {
+        static const nanoflann::SearchParams searchParams(32, 0, false); // false: dont need to sort
+        SmallerPixSizeInRadius<double, std::size_t> resultSet(pixSizeScore, pixSizePrepare, simScorePrepare, vIndex);
+        kdTree.findNeighbors(resultSet, verticesDensePointCloud[vIndex].m, searchParams);
+        
+        if(resultSet.found)
+            pixSizePrepare[vIndex] = -1.0;
+    }
+
+
+    ALICEVISION_LOG_INFO("Filter Dense Point Cloud Function Done");
+}
 
 /// Filter by pixSize
 void filterByPixSize(const std::vector<Point3d>& verticesCoordsPrepare, std::vector<double>& pixSizePrepare, double pixSizeMarginCoef, std::vector<float>& simScorePrepare)

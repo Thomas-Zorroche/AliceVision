@@ -24,6 +24,7 @@
 #include <map>
 #include <set>
 
+
 namespace aliceVision {
 
 namespace sfmData {
@@ -32,6 +33,7 @@ class SfMData;
 
 namespace fuseCut {
 
+void filterDensePointCloud(const StaticVector<Point3d>& verticesDensePointCloud, StaticVector<Point3d>& verticesMesh);
 
 struct FuseParams
 {
