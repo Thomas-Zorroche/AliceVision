@@ -146,26 +146,46 @@ public:
 #endif
 
 /// Filter With Raw Dense Point Cloud
-void filterDensePointCloud(const StaticVector<Point3d>& verticesDensePointCloud, StaticVector<Point3d>& verticesMesh)
+/*
+* verticesMesh = the vector for which to search the nearest neighbors
+*/
+void filterDensePointCloud(const std::vector<Point3d>& verticesDensePointCloud, std::vector<Point3d>& verticesMesh)
 {
     ALICEVISION_LOG_INFO("Filter Dense Point Cloud Function Begin");
 
-    ALICEVISION_LOG_INFO("Build nanoflann KdTree index.");
     PointVectorAdaptator pointCloudRef(verticesDensePointCloud);
     KdTree kdTree(3 /*dim*/, pointCloudRef, nanoflann::KDTreeSingleIndexAdaptorParams(MAX_LEAF_ELEMENTS));
     kdTree.buildIndex();
 
     #pragma omp parallel for
-    for(int vIndex = 0; vIndex < verticesDensePointCloud.size(); ++vIndex)
+    for(int vIndex = 0; vIndex < verticesMesh.size(); ++vIndex)
     {
         static const nanoflann::SearchParams searchParams(32, 0, false); // false: dont need to sort
-        SmallerPixSizeInRadius<double, std::size_t> resultSet(pixSizeScore, pixSizePrepare, simScorePrepare, vIndex);
-        kdTree.findNeighbors(resultSet, verticesDensePointCloud[vIndex].m, searchParams);
+        std::vector<std::pair<size_t, double>> res_matches;
+        const double search_radius = 0.1;
         
-        if(resultSet.found)
-            pixSizePrepare[vIndex] = -1.0;
-    }
+        const double query_point[3] = {verticesMesh[vIndex].x, verticesMesh[vIndex].y, verticesMesh[vIndex].z};
+        // Perform a search for the points within search_radius
+        const size_t nMatches = kdTree.radiusSearch(query_point, search_radius, res_matches, searchParams);
 
+        // Compute centroid of dense point cloud around the mesh vertex
+        double centerX = 0.0;
+        double centerY = 0.0;
+        double centerZ = 0.0;
+        
+        // #pragma omp parallel for
+        for(size_t i = 0; i < nMatches; i++)
+        {
+            size_t index = res_matches[i].first;
+            centerX += kdTree.dataset._data[index].x;
+            centerY += kdTree.dataset._data[index].y;
+            centerZ += kdTree.dataset._data[index].z;
+        }
+        Point3d centroid(centerX / nMatches, centerY / nMatches, centerZ / nMatches);
+
+        // Move the mesh vertex to centroid
+        verticesMesh[vIndex] = centroid;
+    }
 
     ALICEVISION_LOG_INFO("Filter Dense Point Cloud Function Done");
 }

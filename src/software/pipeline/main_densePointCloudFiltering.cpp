@@ -2,13 +2,17 @@
 #include <aliceVision/system/main.hpp>
 
 #include <aliceVision/fuseCut/DelaunayGraphCut.hpp>
-#include <aliceVision/mesh/Texturing.hpp>
+
 #include <aliceVision/mesh/Mesh.hpp>
+#include <aliceVision/mesh/Texturing.hpp>
+
 #include <aliceVision/sfmData/SfMData.hpp>
 #include <aliceVision/sfmDataIO/sfmDataIO.hpp>
 
-#include <boost/filesystem.hpp>
+#include <aliceVision/system/Timer.hpp>
+
 #include <boost/program_options.hpp>
+#include <boost/filesystem.hpp>
 
 #include <string>
 #include <iostream>
@@ -28,6 +32,8 @@ namespace po = boost::program_options;
 
 int aliceVision_main(int argc, char** argv)
 {
+    system::Timer timer;
+
     // command-line parameters
     std::string verboseLevel = system::EVerboseLevel_enumToString(system::Logger::getDefaultVerboseLevel());
     std::string densePointCloudPath;
@@ -87,7 +93,6 @@ int aliceVision_main(int argc, char** argv)
     // set verbose level
     system::Logger::get()->setLogLevel(verboseLevel);
 
-
     /////////////////////////////////////////////////////////////////
     // Dense Point Cloud Filtering
 
@@ -97,6 +102,7 @@ int aliceVision_main(int argc, char** argv)
     mesh::Texturing texturing;
     texturing.loadOBJWithAtlas(inputMeshPath);
     mesh::Mesh* mesh = texturing.mesh;
+
     if(!mesh)
     {
         ALICEVISION_LOG_ERROR("Unable to read input mesh from the file: " << inputMeshPath);
@@ -120,8 +126,23 @@ int aliceVision_main(int argc, char** argv)
         return EXIT_FAILURE;
     }
 
-    fuseCut::filterDensePointCloud(densePointCloud.getLandmarks(), mesh->pts);
+    ALICEVISION_LOG_INFO("Convert dense point cloud to Point3D vector");
 
+    // Convert Landmarks in a 3D Points vector
+    std::vector < aliceVision::Point3d > densePointCloudVector(densePointCloud.getLandmarks().size());
+    for(size_t i = 0; i < densePointCloud.getLandmarks().size(); i++)
+    {
+        aliceVision::Vec3 point = densePointCloud.getLandmarks()[i].X;
+        densePointCloudVector[i] = aliceVision::Point3d(point.x(), point.y(), point.z());
+    }
+
+    aliceVision::fuseCut::filterDensePointCloud(densePointCloudVector, mesh->pts.getDataWritable());
+
+    ALICEVISION_LOG_INFO("Save obj mesh file.");
+    mesh->saveToObj(outputMeshPath);
+    delete mesh;
+
+    ALICEVISION_LOG_INFO("Task done in (s): " + std::to_string(timer.elapsed()));
     ALICEVISION_COUT("EXIT SUCCESS");
 
     return EXIT_SUCCESS;

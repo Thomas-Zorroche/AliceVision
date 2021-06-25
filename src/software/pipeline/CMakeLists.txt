@@ -449,10 +449,10 @@ alicevision_add_software(aliceVision_densePointCloudFiltering
   FOLDER ${FOLDER_SOFTWARE_PIPELINE}
   LINKS aliceVision_system
     aliceVision_numeric
+    aliceVision_fuseCut
     aliceVision_sfmData
     aliceVision_sfmDataIO
-    aliceVision_mvsUtils
-    OpenMesh
+    aliceVision_mesh
     Boost::program_options
     Boost::filesystem
 )
