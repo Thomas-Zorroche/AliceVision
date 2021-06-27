@@ -136,7 +136,7 @@ int aliceVision_main(int argc, char** argv)
         densePointCloudVector[i] = aliceVision::Point3d(point.x(), point.y(), point.z());
     }
 
-    aliceVision::fuseCut::filterDensePointCloud(densePointCloudVector, mesh->pts.getDataWritable());
+    aliceVision::fuseCut::filterDensePointCloud(densePointCloudVector, mesh);
 
     ALICEVISION_LOG_INFO("Save obj mesh file.");
     mesh->saveToObj(outputMeshPath);

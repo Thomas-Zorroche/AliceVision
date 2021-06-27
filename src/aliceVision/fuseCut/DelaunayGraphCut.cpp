@@ -149,9 +149,16 @@ public:
 /*
 * verticesMesh = the vector for which to search the nearest neighbors
 */
-void filterDensePointCloud(const std::vector<Point3d>& verticesDensePointCloud, std::vector<Point3d>& verticesMesh)
+void filterDensePointCloud(const std::vector<Point3d>& verticesDensePointCloud, mesh::Mesh* mesh)
 {
     ALICEVISION_LOG_INFO("Filter Dense Point Cloud Function Begin");
+
+    // Retrieve vertices of mesh
+    std::vector<Point3d>& verticesMesh = mesh->pts.getDataWritable();
+
+    // Retrieve neighbours of each points of the mesh
+    std::vector<std::vector<int>> pointsNeighbors;
+    mesh->getPtsNeighbors(pointsNeighbors);
 
     PointVectorAdaptator pointCloudRef(verticesDensePointCloud);
     KdTree kdTree(3 /*dim*/, pointCloudRef, nanoflann::KDTreeSingleIndexAdaptorParams(MAX_LEAF_ELEMENTS));
@@ -162,9 +169,11 @@ void filterDensePointCloud(const std::vector<Point3d>& verticesDensePointCloud, 
     {
         static const nanoflann::SearchParams searchParams(32, 0, false); // false: dont need to sort
         std::vector<std::pair<size_t, double>> res_matches;
-        const double search_radius = 0.1;
-        
+
+        const double search_radius = mesh->computeLocalAverageEdgeLength(pointsNeighbors, vIndex);
+        //const double search_radius = 0.1;
         const double query_point[3] = {verticesMesh[vIndex].x, verticesMesh[vIndex].y, verticesMesh[vIndex].z};
+
         // Perform a search for the points within search_radius
         const size_t nMatches = kdTree.radiusSearch(query_point, search_radius, res_matches, searchParams);
 
@@ -172,7 +181,6 @@ void filterDensePointCloud(const std::vector<Point3d>& verticesDensePointCloud, 
         double centerX = 0.0;
         double centerY = 0.0;
         double centerZ = 0.0;
-        
         // #pragma omp parallel for
         for(size_t i = 0; i < nMatches; i++)
         {
@@ -181,7 +189,7 @@ void filterDensePointCloud(const std::vector<Point3d>& verticesDensePointCloud, 
             centerY += kdTree.dataset._data[index].y;
             centerZ += kdTree.dataset._data[index].z;
         }
-        Point3d centroid(centerX / nMatches, centerY / nMatches, centerZ / nMatches);
+        Point3d centroid(centerX / (float)nMatches, centerY / (float)nMatches, centerZ / (float)nMatches);
 
         // Move the mesh vertex to centroid
         verticesMesh[vIndex] = centroid;
