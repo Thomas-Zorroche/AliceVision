@@ -150,7 +150,7 @@ public:
 * verticesMesh = the vector for which to search the nearest neighbors
 */
 void filterDensePointCloud(const std::vector<Point3d>& verticesDensePointCloud, mesh::Mesh* mesh, 
-    double radiusFactor, double filterStrength)
+    double radiusFactor, double filterStrength, double epsilonRadius)
 {
     ALICEVISION_LOG_INFO("Filter Dense Point Cloud Function Begin");
 
@@ -171,7 +171,12 @@ void filterDensePointCloud(const std::vector<Point3d>& verticesDensePointCloud, 
         static const nanoflann::SearchParams searchParams(32, 0, false); // false: dont need to sort
         std::vector<std::pair<size_t, double>> res_matches;
 
-        double search_radius = mesh->computeLocalAverageEdgeLength(pointsNeighbors, vIndex); // todo: max edge + epsilon
+        double search_radius = mesh->computeLocalMaxEdgeLength(pointsNeighbors, vIndex);
+        if(search_radius == -1)
+        {
+            continue;
+        }
+        search_radius += epsilonRadius;
         search_radius *= radiusFactor;
 
         // Perform a search for the points within search_radius
