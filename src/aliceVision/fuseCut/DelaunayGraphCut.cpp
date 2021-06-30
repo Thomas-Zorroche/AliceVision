@@ -149,7 +149,8 @@ public:
 /*
 * verticesMesh = the vector for which to search the nearest neighbors
 */
-void filterDensePointCloud(const std::vector<Point3d>& verticesDensePointCloud, mesh::Mesh* mesh)
+void filterDensePointCloud(const std::vector<Point3d>& verticesDensePointCloud, mesh::Mesh* mesh, 
+    double radiusFactor, double filterStrength)
 {
     ALICEVISION_LOG_INFO("Filter Dense Point Cloud Function Begin");
 
@@ -170,11 +171,11 @@ void filterDensePointCloud(const std::vector<Point3d>& verticesDensePointCloud, 
         static const nanoflann::SearchParams searchParams(32, 0, false); // false: dont need to sort
         std::vector<std::pair<size_t, double>> res_matches;
 
-        const double search_radius = mesh->computeLocalAverageEdgeLength(pointsNeighbors, vIndex);
-        //const double search_radius = 0.1;
-        const double query_point[3] = {verticesMesh[vIndex].x, verticesMesh[vIndex].y, verticesMesh[vIndex].z};
+        double search_radius = mesh->computeLocalAverageEdgeLength(pointsNeighbors, vIndex); // todo: max edge + epsilon
+        search_radius *= radiusFactor;
 
         // Perform a search for the points within search_radius
+        const double query_point[3] = {verticesMesh[vIndex].x, verticesMesh[vIndex].y, verticesMesh[vIndex].z};
         const size_t nMatches = kdTree.radiusSearch(query_point, search_radius, res_matches, searchParams);
 
         // Compute centroid of dense point cloud around the mesh vertex
@@ -189,10 +190,16 @@ void filterDensePointCloud(const std::vector<Point3d>& verticesDensePointCloud, 
             centerY += kdTree.dataset._data[index].y;
             centerZ += kdTree.dataset._data[index].z;
         }
-        Point3d centroid(centerX / (float)nMatches, centerY / (float)nMatches, centerZ / (float)nMatches);
-
+        Point3d centroid(centerX / (double)nMatches, centerY / (double)nMatches, centerZ / (double)nMatches);
+        
         // Move the mesh vertex to centroid
-        verticesMesh[vIndex] = centroid;
+        double deltaX = centroid.x - verticesMesh[vIndex].x;
+        double deltaY = centroid.y - verticesMesh[vIndex].y;
+        double deltaZ = centroid.z - verticesMesh[vIndex].z;
+
+        verticesMesh[vIndex].x = verticesMesh[vIndex].x + (deltaX * filterStrength);
+        verticesMesh[vIndex].y = verticesMesh[vIndex].y + (deltaY * filterStrength);
+        verticesMesh[vIndex].z = verticesMesh[vIndex].z + (deltaZ * filterStrength);
     }
 
     ALICEVISION_LOG_INFO("Filter Dense Point Cloud Function Done");

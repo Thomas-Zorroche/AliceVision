@@ -39,6 +39,8 @@ int aliceVision_main(int argc, char** argv)
     std::string densePointCloudPath;
     std::string outputMeshPath;
     std::string inputMeshPath;
+    float radiusFactor = 1.0;
+    float filterStrength = 1.0;
 
     po::options_description allParams("AliceVision dense point cloud filtering");
 
@@ -47,18 +49,29 @@ int aliceVision_main(int argc, char** argv)
         ("inputRawSfm,i", po::value<std::string>(&densePointCloudPath)->required(), 
             "SfMData file.")
         ("inputMesh,i", po::value<std::string>(&inputMeshPath)->required(), 
-            "Input Mesh (OBJ file format).")(
-        "outputMesh,o", po::value<std::string>(&outputMeshPath)->required(), 
+            "Input Mesh (OBJ file format).")
+        ("outputMesh,o", po::value<std::string>(&outputMeshPath)->required(), 
             "Output mesh (OBJ file format).");
 
+
     po::options_description optionalParams("Optional parameters");
+    optionalParams.add_options()
+        ("radiusFactor,i", po::value<float>(&radiusFactor)->default_value(radiusFactor),
+            "radiusFactor")
+        ("filterStrength,i", po::value<float>(&filterStrength)->default_value(filterStrength),
+            "filterStrength");
+
+    po::options_description advancedParams("Advanced parameters");
+
+    ALICEVISION_LOG_INFO("Radius Factor: " << radiusFactor);
+    ALICEVISION_LOG_INFO("Filter Strength: " << filterStrength);
 
     po::options_description logParams("Log parameters");
     logParams.add_options()
         ("verboseLevel,v", po::value<std::string>(&verboseLevel)->default_value(verboseLevel),
             "verbosity level (fatal,  error, warning, info, debug, trace).");
 
-    allParams.add(requiredParams).add(optionalParams).add(logParams);
+    allParams.add(requiredParams).add(optionalParams).add(advancedParams).add(logParams);
 
     po::variables_map vm;
 
@@ -136,14 +149,11 @@ int aliceVision_main(int argc, char** argv)
         densePointCloudVector[i] = aliceVision::Point3d(point.x(), point.y(), point.z());
     }
 
-    aliceVision::fuseCut::filterDensePointCloud(densePointCloudVector, mesh);
+    aliceVision::fuseCut::filterDensePointCloud(densePointCloudVector, mesh, radiusFactor, filterStrength);
 
     ALICEVISION_LOG_INFO("Save obj mesh file.");
     mesh->saveToObj(outputMeshPath);
-    delete mesh;
 
     ALICEVISION_LOG_INFO("Task done in (s): " + std::to_string(timer.elapsed()));
-    ALICEVISION_COUT("EXIT SUCCESS");
-
     return EXIT_SUCCESS;
 }
