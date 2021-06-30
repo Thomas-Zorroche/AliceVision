@@ -42,6 +42,7 @@ int aliceVision_main(int argc, char** argv)
     float radiusFactor = 1.0;
     float filterStrength = 1.0;
     double epsilonRadius = 0.001;
+    int interations = 1;
 
     po::options_description allParams("AliceVision dense point cloud filtering");
 
@@ -57,12 +58,15 @@ int aliceVision_main(int argc, char** argv)
 
     po::options_description optionalParams("Optional parameters");
     optionalParams.add_options()
-        ("radiusFactor,i", po::value<float>(&radiusFactor)->default_value(radiusFactor),
-            "radiusFactor")
         ("filterStrength,i", po::value<float>(&filterStrength)->default_value(filterStrength),
             "filterStrength")
+        ("iterations,i", po::value<int>(&interations)->default_value(interations), 
+            "interations")
+        ("radiusFactor,i", po::value<float>(&radiusFactor)->default_value(radiusFactor),
+            "radiusFactor")
         ("epsilonRadius,i", po::value<double>(&epsilonRadius)->default_value(epsilonRadius), 
             "epsilonRadius");
+
 
     po::options_description advancedParams("Advanced parameters");
 
@@ -153,7 +157,10 @@ int aliceVision_main(int argc, char** argv)
         densePointCloudVector[i] = aliceVision::Point3d(point.x(), point.y(), point.z());
     }
 
-    aliceVision::fuseCut::filterDensePointCloud(densePointCloudVector, mesh, radiusFactor, filterStrength, epsilonRadius);
+    for(size_t i = 0; i < interations; i++)
+    {
+        aliceVision::fuseCut::filterDensePointCloud(densePointCloudVector, mesh, radiusFactor, filterStrength, epsilonRadius);
+    }
 
     ALICEVISION_LOG_INFO("Save obj mesh file.");
     mesh->saveToObj(outputMeshPath);
