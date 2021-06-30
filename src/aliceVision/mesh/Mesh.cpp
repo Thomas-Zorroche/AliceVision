@@ -1791,6 +1791,30 @@ double Mesh::computeLocalAverageEdgeLength(const std::vector<std::vector<int>>& 
     return localAverageEdgeLength;
 }
 
+double Mesh::computeLocalMaxEdgeLength(const std::vector<std::vector<int>>& ptsNeighbors, int ptId) const 
+{
+    double localMaxEdgeLength = 0.0;
+
+    const Point3d& point = pts[ptId];
+    const std::vector<int>& ptNeighbors = ptsNeighbors[ptId];
+    const int nbNeighbors = ptNeighbors.size();
+
+    if(nbNeighbors == 0)
+        return -1;
+
+    for(int i = 0; i < nbNeighbors; ++i)
+    {
+        const Point3d& pointNeighbor = pts[ptNeighbors[i]];
+        double edgeLength = dist(point, pointNeighbor); 
+        if(edgeLength > localMaxEdgeLength)
+        {
+            localMaxEdgeLength = edgeLength;
+        }
+    }
+
+    return localMaxEdgeLength;
+}
+
 void Mesh::letJustTringlesIdsInMesh(StaticVector<int>& trisIdsToStay)
 {
     StaticVector<Mesh::triangle> trisTmp;

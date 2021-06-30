@@ -189,6 +189,7 @@ public:
 
     double computeAverageEdgeLength() const;
     double computeLocalAverageEdgeLength(const std::vector<std::vector<int>>& ptsNeighbors, int ptId) const;
+    double computeLocalMaxEdgeLength(const std::vector<std::vector<int>>& ptsNeighbors, int ptId) const;
 
     bool isTriangleAngleAtVetexObtuse(int vertexIdInTriangle, int triId) const;
     bool isTriangleObtuse(int triId) const;
