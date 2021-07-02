@@ -149,10 +149,24 @@ public:
 /*
 * verticesMesh = the vector for which to search the nearest neighbors
 */
-void filterDensePointCloud(const std::vector<Point3d>& verticesDensePointCloud, mesh::Mesh* mesh, 
+void filterDensePointCloud(sfmData::SfMData& rawSfmData, mesh::Mesh* mesh, 
     double radiusFactor, double filterStrength, double epsilonRadius)
 {
     ALICEVISION_LOG_INFO("Filter Dense Point Cloud Function Begin");
+
+    // Convert Landmarks in a 3D Points vector
+    std::vector<aliceVision::Point3d> verticesDensePointCloud(rawSfmData.getLandmarks().size());
+    sfmData::Landmarks& landmarks = rawSfmData.getLandmarks();
+    for(size_t i = 0; i < rawSfmData.getLandmarks().size(); i++)
+    {
+        aliceVision::Vec3 point = rawSfmData.getLandmarks()[i].X;
+        verticesDensePointCloud[i] = aliceVision::Point3d(point.x(), point.y(), point.z());
+
+        // DEBUG
+        // ================================
+        landmarks[i].rgb = image::RGBColor(255, 255, 255);
+        // ================================
+    }
 
     // Retrieve vertices of mesh
     std::vector<Point3d>& verticesMesh = mesh->pts.getDataWritable();
@@ -165,6 +179,7 @@ void filterDensePointCloud(const std::vector<Point3d>& verticesDensePointCloud, 
     KdTree kdTree(3 /*dim*/, pointCloudRef, nanoflann::KDTreeSingleIndexAdaptorParams(MAX_LEAF_ELEMENTS));
     kdTree.buildIndex();
 
+
     #pragma omp parallel for
     for(int vIndex = 0; vIndex < verticesMesh.size(); ++vIndex)
     {
@@ -172,16 +187,28 @@ void filterDensePointCloud(const std::vector<Point3d>& verticesDensePointCloud, 
         std::vector<std::pair<size_t, double>> res_matches;
 
         double search_radius = mesh->computeLocalMaxEdgeLength(pointsNeighbors, vIndex);
-        if(search_radius == -1)
+        if(search_radius == -1.0)
         {
             continue;
         }
         search_radius += epsilonRadius;
         search_radius *= radiusFactor;
 
+        //ALICEVISION_COUT(search_radius);
+
         // Perform a search for the points within search_radius
         const double query_point[3] = {verticesMesh[vIndex].x, verticesMesh[vIndex].y, verticesMesh[vIndex].z};
         const size_t nMatches = kdTree.radiusSearch(query_point, search_radius, res_matches, searchParams);
+
+        // DEBUG
+        // ================================
+        if(vIndex % 10000 == 0)
+        {
+            ALICEVISION_COUT(search_radius);
+        }
+        // ================================
+
+        if (nMatches == 0) continue;
 
         // Compute centroid of dense point cloud around the mesh vertex
         double centerX = 0.0;
@@ -191,6 +218,14 @@ void filterDensePointCloud(const std::vector<Point3d>& verticesDensePointCloud, 
         for(size_t i = 0; i < nMatches; i++)
         {
             size_t index = res_matches[i].first;
+            // DEBUG
+            // ================================
+            if (vIndex % 10000 == 0)
+            {
+                landmarks[index].rgb = image::RGBColor(255, 0, 0);
+            }
+            // ================================
+
             centerX += kdTree.dataset._data[index].x;
             centerY += kdTree.dataset._data[index].y;
             centerZ += kdTree.dataset._data[index].z;

@@ -37,6 +37,7 @@ int aliceVision_main(int argc, char** argv)
     // command-line parameters
     std::string verboseLevel = system::EVerboseLevel_enumToString(system::Logger::getDefaultVerboseLevel());
     std::string densePointCloudPath;
+    std::string outputDensePointCloud;
     std::string outputMeshPath;
     std::string inputMeshPath;
     float radiusFactor = 1.0;
@@ -53,7 +54,9 @@ int aliceVision_main(int argc, char** argv)
         ("inputMesh,i", po::value<std::string>(&inputMeshPath)->required(), 
             "Input Mesh (OBJ file format).")
         ("outputMesh,o", po::value<std::string>(&outputMeshPath)->required(), 
-            "Output mesh (OBJ file format).");
+            "Output mesh (OBJ file format).")(
+        "outputDensePointCloud,o", po::value<std::string>(&outputDensePointCloud)->required(), 
+            "Output Dense Point Cloud");
 
 
     po::options_description optionalParams("Optional parameters");
@@ -149,21 +152,16 @@ int aliceVision_main(int argc, char** argv)
 
     ALICEVISION_LOG_INFO("Convert dense point cloud to Point3D vector");
 
-    // Convert Landmarks in a 3D Points vector
-    std::vector < aliceVision::Point3d > densePointCloudVector(densePointCloud.getLandmarks().size());
-    for(size_t i = 0; i < densePointCloud.getLandmarks().size(); i++)
-    {
-        aliceVision::Vec3 point = densePointCloud.getLandmarks()[i].X;
-        densePointCloudVector[i] = aliceVision::Point3d(point.x(), point.y(), point.z());
-    }
-
     for(size_t i = 0; i < interations; i++)
     {
-        aliceVision::fuseCut::filterDensePointCloud(densePointCloudVector, mesh, radiusFactor, filterStrength, epsilonRadius);
+        aliceVision::fuseCut::filterDensePointCloud(densePointCloud, mesh, radiusFactor, filterStrength, epsilonRadius);
     }
 
     ALICEVISION_LOG_INFO("Save obj mesh file.");
     mesh->saveToObj(outputMeshPath);
+
+    ALICEVISION_LOG_INFO("Save dense point cloud.");
+    sfmDataIO::Save(densePointCloud, outputDensePointCloud, sfmDataIO::ESfMData::ALL_DENSE);
 
     ALICEVISION_LOG_INFO("Task done in (s): " + std::to_string(timer.elapsed()));
     return EXIT_SUCCESS;
