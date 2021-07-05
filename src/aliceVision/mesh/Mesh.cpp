@@ -1791,7 +1791,7 @@ double Mesh::computeLocalAverageEdgeLength(const std::vector<std::vector<int>>& 
     return localAverageEdgeLength;
 }
 
-double Mesh::computeLocalMaxEdgeLength(const std::vector<std::vector<int>>& ptsNeighbors, int ptId) const 
+double Mesh::computeLocalMaxEdgeLength(const std::vector<std::vector<int>>& ptsNeighbors, int ptId, bool debug) const 
 {
     double localMaxEdgeLength = 0.0;
 
@@ -1806,6 +1806,9 @@ double Mesh::computeLocalMaxEdgeLength(const std::vector<std::vector<int>>& ptsN
     {
         const Point3d& pointNeighbor = pts[ptNeighbors[i]];
         double edgeLength = dist(point, pointNeighbor); 
+
+        if (debug) ALICEVISION_COUT("Edge Length: " << edgeLength);
+
         if(edgeLength > localMaxEdgeLength)
         {
             localMaxEdgeLength = edgeLength;

@@ -183,10 +183,17 @@ void filterDensePointCloud(sfmData::SfMData& rawSfmData, mesh::Mesh* mesh,
     #pragma omp parallel for
     for(int vIndex = 0; vIndex < verticesMesh.size(); ++vIndex)
     {
+        bool debug = (vIndex % 10000 == 0) ? true : false;
+
         static const nanoflann::SearchParams searchParams(32, 0, false); // false: dont need to sort
         std::vector<std::pair<size_t, double>> res_matches;
+        
+        if(debug)
+        {
+            ALICEVISION_COUT("DEBUG--------------------------");
+        }
 
-        double search_radius = mesh->computeLocalMaxEdgeLength(pointsNeighbors, vIndex);
+        double search_radius = mesh->computeLocalMaxEdgeLength(pointsNeighbors, vIndex, debug);
         if(search_radius == -1.0)
         {
             continue;
@@ -194,17 +201,15 @@ void filterDensePointCloud(sfmData::SfMData& rawSfmData, mesh::Mesh* mesh,
         search_radius += epsilonRadius;
         search_radius *= radiusFactor;
 
-        //ALICEVISION_COUT(search_radius);
-
         // Perform a search for the points within search_radius
         const double query_point[3] = {verticesMesh[vIndex].x, verticesMesh[vIndex].y, verticesMesh[vIndex].z};
         const size_t nMatches = kdTree.radiusSearch(query_point, search_radius, res_matches, searchParams);
 
         // DEBUG
         // ================================
-        if(vIndex % 10000 == 0)
+        if(debug)
         {
-            ALICEVISION_COUT(search_radius);
+            ALICEVISION_COUT("radius search: " << search_radius << " -> " << nMatches << " matches");
         }
         // ================================
 
@@ -214,13 +219,13 @@ void filterDensePointCloud(sfmData::SfMData& rawSfmData, mesh::Mesh* mesh,
         double centerX = 0.0;
         double centerY = 0.0;
         double centerZ = 0.0;
-        // #pragma omp parallel for
+
         for(size_t i = 0; i < nMatches; i++)
         {
             size_t index = res_matches[i].first;
             // DEBUG
             // ================================
-            if (vIndex % 10000 == 0)
+            if (debug)
             {
                 landmarks[index].rgb = image::RGBColor(255, 0, 0);
             }
