@@ -42,7 +42,7 @@ int aliceVision_main(int argc, char** argv)
     std::string inputMeshPath;
     float radiusFactor = 1.0f;
     float filterStrength = 1.0f;
-    double epsilonRadius = 0.001;
+    int nMatchesMax = 50;
     int interations = 1;
     float persistence = 1.0f;
 
@@ -70,15 +70,14 @@ int aliceVision_main(int argc, char** argv)
             "radiusFactor")
         ("persistence,i", po::value<float>(&persistence)->default_value(persistence),
             "persistence")
-        ("epsilonRadius,i", po::value<double>(&epsilonRadius)->default_value(epsilonRadius), 
-            "epsilonRadius");
+        ("nMatchesMax,i", po::value<int>(&nMatchesMax)->default_value(nMatchesMax), 
+            "nMatchesMax");
 
 
     po::options_description advancedParams("Advanced parameters");
 
     ALICEVISION_LOG_INFO("Radius Factor: " << radiusFactor);
     ALICEVISION_LOG_INFO("Filter Strength: " << filterStrength);
-    ALICEVISION_LOG_INFO("Epsilon Radius: " << epsilonRadius);
 
     po::options_description logParams("Log parameters");
     logParams.add_options()
@@ -157,7 +156,7 @@ int aliceVision_main(int argc, char** argv)
 
     for(size_t i = 0; i < interations; i++)
     {
-        aliceVision::fuseCut::filterDensePointCloud(densePointCloud, mesh, radiusFactor, filterStrength, epsilonRadius);
+        aliceVision::fuseCut::filterDensePointCloud(densePointCloud, mesh, radiusFactor, filterStrength, nMatchesMax);
         filterStrength = filterStrength * persistence;
     }
 

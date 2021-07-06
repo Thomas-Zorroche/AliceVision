@@ -150,7 +150,7 @@ public:
 * verticesMesh = the vector for which to search the nearest neighbors
 */
 void filterDensePointCloud(sfmData::SfMData& rawSfmData, mesh::Mesh* mesh, 
-    double radiusFactor, double filterStrength, double epsilonRadius)
+    double radiusFactor, double filterStrength, int nMatchesMax)
 {
     ALICEVISION_LOG_INFO("Filter Dense Point Cloud Function Begin");
 
@@ -198,12 +198,16 @@ void filterDensePointCloud(sfmData::SfMData& rawSfmData, mesh::Mesh* mesh,
         {
             continue;
         }
-        search_radius += epsilonRadius;
         search_radius *= radiusFactor;
 
         // Perform a search for the points within search_radius
         const double query_point[3] = {verticesMesh[vIndex].x, verticesMesh[vIndex].y, verticesMesh[vIndex].z};
         const size_t nMatches = kdTree.radiusSearch(query_point, search_radius, res_matches, searchParams);
+
+        if(nMatches > nMatchesMax)
+        {
+            continue;
+        }
 
         // DEBUG
         // ================================
