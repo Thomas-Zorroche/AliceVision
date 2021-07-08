@@ -42,7 +42,8 @@ int aliceVision_main(int argc, char** argv)
     std::string inputMeshPath;
     float radiusFactor = 1.0f;
     float filterStrength = 1.0f;
-    int nMatchesMax = 50;
+    int nMatchesMax = 25;
+    int nMatchesLimit = 50;
     int interations = 1;
     float persistence = 1.0f;
 
@@ -70,6 +71,8 @@ int aliceVision_main(int argc, char** argv)
             "radiusFactor")
         ("persistence,i", po::value<float>(&persistence)->default_value(persistence),
             "persistence")
+        ("nMatchesLimit,i", po::value<int>(&nMatchesLimit)->default_value(nMatchesLimit), 
+            "nMatchesLimit")
         ("nMatchesMax,i", po::value<int>(&nMatchesMax)->default_value(nMatchesMax), 
             "nMatchesMax");
 
@@ -156,7 +159,9 @@ int aliceVision_main(int argc, char** argv)
 
     for(size_t i = 0; i < interations; i++)
     {
-        aliceVision::fuseCut::filterDensePointCloud(densePointCloud, mesh, radiusFactor, filterStrength, nMatchesMax);
+        ALICEVISION_LOG_INFO("ITERATION -------------- " << interations);
+
+        aliceVision::fuseCut::filterDensePointCloud(densePointCloud, mesh, radiusFactor, filterStrength, nMatchesMax, nMatchesLimit);
         filterStrength = filterStrength * persistence;
     }
 

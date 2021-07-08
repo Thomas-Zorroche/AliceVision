@@ -30,6 +30,7 @@
 
 #include <random>
 #include <stdexcept>
+#include <algorithm>
 
 #include <boost/math/constants/constants.hpp>
 #include <boost/accumulators/accumulators.hpp>
@@ -145,12 +146,17 @@ public:
 };
 #endif
 
+bool sortMatchesByDistance(const std::pair<size_t, double>& i, const std::pair<size_t, double>& j) 
+{
+    return i.second < j.second;
+}
+
 /// Filter With Raw Dense Point Cloud
 /*
 * verticesMesh = the vector for which to search the nearest neighbors
 */
 void filterDensePointCloud(sfmData::SfMData& rawSfmData, mesh::Mesh* mesh, 
-    double radiusFactor, double filterStrength, int nMatchesMax)
+    double radiusFactor, double filterStrength, int nMatchesMax, int nMatchesLimit)
 {
     ALICEVISION_LOG_INFO("Filter Dense Point Cloud Function Begin");
 
@@ -179,7 +185,6 @@ void filterDensePointCloud(sfmData::SfMData& rawSfmData, mesh::Mesh* mesh,
     KdTree kdTree(3 /*dim*/, pointCloudRef, nanoflann::KDTreeSingleIndexAdaptorParams(MAX_LEAF_ELEMENTS));
     kdTree.buildIndex();
 
-
     #pragma omp parallel for
     for(int vIndex = 0; vIndex < verticesMesh.size(); ++vIndex)
     {
@@ -187,13 +192,8 @@ void filterDensePointCloud(sfmData::SfMData& rawSfmData, mesh::Mesh* mesh,
 
         static const nanoflann::SearchParams searchParams(32, 0, false); // false: dont need to sort
         std::vector<std::pair<size_t, double>> res_matches;
-        
-        if(debug)
-        {
-            ALICEVISION_COUT("DEBUG--------------------------");
-        }
 
-        double search_radius = mesh->computeLocalMaxEdgeLength(pointsNeighbors, vIndex, debug);
+        double search_radius = mesh->computeLocalMaxEdgeSquaredLength(pointsNeighbors, vIndex);
         if(search_radius == -1.0)
         {
             continue;
@@ -204,11 +204,6 @@ void filterDensePointCloud(sfmData::SfMData& rawSfmData, mesh::Mesh* mesh,
         const double query_point[3] = {verticesMesh[vIndex].x, verticesMesh[vIndex].y, verticesMesh[vIndex].z};
         const size_t nMatches = kdTree.radiusSearch(query_point, search_radius, res_matches, searchParams);
 
-        if(nMatches > nMatchesMax)
-        {
-            continue;
-        }
-
         // DEBUG
         // ================================
         if(debug)
@@ -217,14 +212,30 @@ void filterDensePointCloud(sfmData::SfMData& rawSfmData, mesh::Mesh* mesh,
         }
         // ================================
 
-        if (nMatches == 0) continue;
+        if (nMatches == 0) continue;             // No Neighbors
+        if (nMatches > nMatchesLimit) continue;  // Too much neighbors
+
+        // Sort matches by distance
+        std::sort(res_matches.begin(), res_matches.end(), sortMatchesByDistance);
+
+        if(debug)
+        {
+            int indexSort = 0;
+            ALICEVISION_COUT("Sort Matches");
+            for(const auto& match : res_matches)
+            {
+                ALICEVISION_COUT(indexSort << ": " << match.second);
+                indexSort++;
+            }
+        }
 
         // Compute centroid of dense point cloud around the mesh vertex
         double centerX = 0.0;
         double centerY = 0.0;
         double centerZ = 0.0;
 
-        for(size_t i = 0; i < nMatches; i++)
+        int reelNeighbors = 0;
+        for(size_t i = 0; i < nMatches && i < nMatchesMax; i++)
         {
             size_t index = res_matches[i].first;
             // DEBUG
@@ -238,8 +249,10 @@ void filterDensePointCloud(sfmData::SfMData& rawSfmData, mesh::Mesh* mesh,
             centerX += kdTree.dataset._data[index].x;
             centerY += kdTree.dataset._data[index].y;
             centerZ += kdTree.dataset._data[index].z;
+
+            reelNeighbors++;
         }
-        Point3d centroid(centerX / (double)nMatches, centerY / (double)nMatches, centerZ / (double)nMatches);
+        Point3d centroid(centerX / (double)reelNeighbors, centerY / (double)reelNeighbors, centerZ / (double)reelNeighbors);
         
         // Move the mesh vertex to centroid
         double deltaX = centroid.x - verticesMesh[vIndex].x;
@@ -250,7 +263,7 @@ void filterDensePointCloud(sfmData::SfMData& rawSfmData, mesh::Mesh* mesh,
         verticesMesh[vIndex].y = verticesMesh[vIndex].y + (deltaY * filterStrength);
         verticesMesh[vIndex].z = verticesMesh[vIndex].z + (deltaZ * filterStrength);
     }
-
+    
     ALICEVISION_LOG_INFO("Filter Dense Point Cloud Function Done");
 }
 

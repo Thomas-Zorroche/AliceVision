@@ -1792,7 +1792,7 @@ double Mesh::computeLocalAverageEdgeLength(const std::vector<std::vector<int>>& 
 }
 
 // Return squared edge length
-double Mesh::computeLocalMaxEdgeLength(const std::vector<std::vector<int>>& ptsNeighbors, int ptId, bool debug) const 
+double Mesh::computeLocalMaxEdgeSquaredLength(const std::vector<std::vector<int>>& ptsNeighbors, int ptId, bool debug) const 
 {
     double localMaxEdgeLength = 0.0;
 
@@ -1809,7 +1809,7 @@ double Mesh::computeLocalMaxEdgeLength(const std::vector<std::vector<int>>& ptsN
         // Compute squared distance
         double edgeLength = (point - pointNeighbor).size2();    
 
-        if (debug) ALICEVISION_COUT("Edge Length: " << edgeLength);
+        //if (debug) ALICEVISION_COUT("Edge Length: " << edgeLength);
 
         if(edgeLength > localMaxEdgeLength)
         {
