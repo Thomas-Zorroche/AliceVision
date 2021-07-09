@@ -34,7 +34,7 @@ class SfMData;
 namespace fuseCut {
 
 void filterDensePointCloud(sfmData::SfMData& rawSfmData, mesh::Mesh* mesh, double radiusFactor, 
-    double filterStrength, int nMatchesMax, int nMatchesLimit);
+    double filterStrength, int nPointsMax, int nNeighborsMax);
 
 struct FuseParams
 {

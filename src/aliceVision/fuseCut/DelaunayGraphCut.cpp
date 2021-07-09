@@ -156,7 +156,7 @@ bool sortMatchesByDistance(const std::pair<size_t, double>& i, const std::pair<s
 * verticesMesh = the vector for which to search the nearest neighbors
 */
 void filterDensePointCloud(sfmData::SfMData& rawSfmData, mesh::Mesh* mesh, 
-    double radiusFactor, double filterStrength, int nMatchesMax, int nMatchesLimit)
+    double radiusFactor, double filterStrength, int nPointsMax, int nNeighborsMax)
 {
     ALICEVISION_LOG_INFO("Filter Dense Point Cloud Function Begin");
 
@@ -188,7 +188,7 @@ void filterDensePointCloud(sfmData::SfMData& rawSfmData, mesh::Mesh* mesh,
     #pragma omp parallel for
     for(int vIndex = 0; vIndex < verticesMesh.size(); ++vIndex)
     {
-        bool debug = (vIndex % 10000 == 0) ? true : false;
+        bool debug = (vIndex % 1000 == 0) ? true : false;
 
         static const nanoflann::SearchParams searchParams(32, 0, false); // false: dont need to sort
         std::vector<std::pair<size_t, double>> res_matches;
@@ -213,7 +213,7 @@ void filterDensePointCloud(sfmData::SfMData& rawSfmData, mesh::Mesh* mesh,
         // ================================
 
         if (nMatches == 0) continue;             // No Neighbors
-        if (nMatches > nMatchesLimit) continue;  // Too much neighbors
+        if (nMatches > nNeighborsMax) continue;  // Too much neighbors
 
         // Sort matches by distance
         std::sort(res_matches.begin(), res_matches.end(), sortMatchesByDistance);
@@ -221,10 +221,10 @@ void filterDensePointCloud(sfmData::SfMData& rawSfmData, mesh::Mesh* mesh,
         if(debug)
         {
             int indexSort = 0;
-            ALICEVISION_COUT("Sort Matches");
+            //ALICEVISION_COUT("Sort Matches");
             for(const auto& match : res_matches)
             {
-                ALICEVISION_COUT(indexSort << ": " << match.second);
+                //ALICEVISION_COUT(indexSort << ": " << match.second);
                 indexSort++;
             }
         }
@@ -234,15 +234,22 @@ void filterDensePointCloud(sfmData::SfMData& rawSfmData, mesh::Mesh* mesh,
         double centerY = 0.0;
         double centerZ = 0.0;
 
-        int reelNeighbors = 0;
-        for(size_t i = 0; i < nMatches && i < nMatchesMax; i++)
+        int activeNeighbors = 0;
+        for(size_t i = 0; i < nMatches && i < nPointsMax; i++)
         {
             size_t index = res_matches[i].first;
             // DEBUG
             // ================================
             if (debug)
             {
-                landmarks[index].rgb = image::RGBColor(255, 0, 0);
+                if(res_matches[i].second < 1e-7)
+                {
+                    landmarks[index].rgb = image::RGBColor(0, 255, 0);
+                }
+                else
+                {
+                    landmarks[index].rgb = image::RGBColor(255, 0, 0);
+                }
             }
             // ================================
 
@@ -250,9 +257,9 @@ void filterDensePointCloud(sfmData::SfMData& rawSfmData, mesh::Mesh* mesh,
             centerY += kdTree.dataset._data[index].y;
             centerZ += kdTree.dataset._data[index].z;
 
-            reelNeighbors++;
+            activeNeighbors++;
         }
-        Point3d centroid(centerX / (double)reelNeighbors, centerY / (double)reelNeighbors, centerZ / (double)reelNeighbors);
+        Point3d centroid(centerX / (double)activeNeighbors, centerY / (double)activeNeighbors, centerZ / (double)activeNeighbors );
         
         // Move the mesh vertex to centroid
         double deltaX = centroid.x - verticesMesh[vIndex].x;
